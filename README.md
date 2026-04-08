@@ -1,5 +1,4 @@
 # Samling av python script
 
 ## Om wifi.py
-Vid en felsökning av en släktings wifi så kom ingen ihåg det sparade lösenordet för nätverket, 
-så då kom idéen att det borde vara enkelt att fixa ett script som tar reda på sånt.
+VVid felsökning av en släktings WiFi visade det sig att ingen längre kände till det sparade lösenordet. Det ledde till idén att det borde gå att lösa på ett enkelt sätt genom ett script som kan hämta sådan information automatiskt.
