@@ -1,94 +1,49 @@
+import re
 import subprocess
 
 
 def run(cmd):
-    return subprocess.check_output(
-        cmd, text=True, encoding="utf-8",
-        errors="ignore", stderr=subprocess.DEVNULL
-    )
+    try:
+        return subprocess.check_output(
+            cmd, text=True, encoding="utf-8", errors="ignore", stderr=subprocess.DEVNULL
+        )
+    except Exception:
+        return ""
 
 
 def get_current_ssid():
-    try:
-        ssid = run([
-            "powershell", "-NoProfile", "-NonInteractive",
-            "-Command", "(Get-NetConnectionProfile).Name"
-        ]).strip()
-        return ssid or None
-    except Exception:
-        pass
-
-    try:
-        for line in run(["netsh", "wlan", "show", "interfaces"]).splitlines():
-            if "SSID" in line and "BSSID" not in line:
-                return line.split(":", 1)[1].strip()
-    except Exception:
-        pass
-
-    return None
+    match = re.search(r"^\s*SSID\s*:\s*(.+)$", run(["netsh", "wlan", "show", "interfaces"]), re.M)
+    return match.group(1).strip() if match else None
 
 
 def get_all_wifi_passwords():
+    profiles = re.findall(r"All User Profile\s*:\s*(.+)", run(["netsh", "wlan", "show", "profiles"]))
     passwords = {}
-    try:
-        output = run(["netsh", "wlan", "show", "profiles"])
-        for line in output.splitlines():
-            if "All User Profile" in line:
-                ssid = line.split(":", 1)[1].strip()
-                try:
-                    pwd_output = run([
-                        "netsh", "wlan", "show", "profile",
-                        f"name={ssid}", "key=clear"
-                    ])
-                    for pwd_line in pwd_output.splitlines():
-                        if "Key Content" in pwd_line:
-                            password = pwd_line.split(":", 1)[1].strip()
-                            passwords[ssid] = password
-                            break
-                    else:
-                        passwords[ssid] = None
-                except Exception:
-                    passwords[ssid] = None
-    except Exception:
-        pass
-
+    for ssid in (s.strip() for s in profiles):
+        details = run(["netsh", "wlan", "show", "profile", f"name={ssid}", "key=clear"])
+        pwd_match = re.search(r"Key Content\s*:\s*(.+)", details)
+        passwords[ssid] = pwd_match.group(1).strip() if pwd_match else None
     return passwords
-
-def find_password_for_ssid(ssid, passwords):
-    if ssid is None:
-        return None
-    if ssid in passwords:
-        return passwords[ssid]
-    return None
 
 
 if __name__ == "__main__":
     current_ssid = get_current_ssid()
     passwords = get_all_wifi_passwords()
-    current_password = find_password_for_ssid(current_ssid, passwords)
+    current_password = passwords.get(current_ssid)
 
-    GREEN = "\033[92m"
-    RED = "\033[91m"
-    CYAN = "\033[96m"
-    RESET = "\033[0m"
-    
-    
-    print("\n")
-    print(CYAN + f"  {'Sparade WIFI-nätverk'}" + RESET)
-    print("─" * 44)
-    print(CYAN + f"  {'SSID':<28} Lösenord" + RESET)
-    print("─" * 44)
+    CYAN, GREEN, RED, RESET = "\033[96m", "\033[92m", "\033[91m", "\033[0m"
+
+    print(f"\n{CYAN}  Sparade WIFI-nätverk{RESET}\n" + "─" * 44)
+    print(f"{CYAN}  {'SSID':<28} Lösenord{RESET}\n" + "─" * 44)
 
     for network, pwd in sorted(passwords.items()):
-        marker = RED + " * " + RESET  if network == current_ssid else ""
+        marker = f"{RED} * {RESET}" if network == current_ssid else ""
         print(f"  {network:<28} {pwd or '(inget lösenord)'}{marker}")
 
     print("─" * 44)
     if current_ssid:
-        print(GREEN + f"  {'Nuvarande nätverk':<28} {current_ssid}" + RESET)
-        if current_password:
-            print(GREEN + f"  {'Lösenord':<28} {current_password}" + RESET)
-        else:
-            print(RED + f"  {'Lösenord':<28} (inget lösenord)" + RESET)
+        print(f"{GREEN}  {'Nuvarande nätverk':<28} {current_ssid}{RESET}")
+        status_color = GREEN if current_password else RED
+        print(f"{status_color}  {'Lösenord':<28} {current_password or '(inget lösenord)'}{RESET}")
     else:
-        print(RED + "  Ingen ansluten Wi-Fi-nätverk hittades." + RESET)
+        print(f"{RED}  Inget anslutet Wi-Fi-nätverk hittades.{RESET}")
