@@ -18,7 +18,7 @@ Retrieves all saved Wi-Fi network profiles and passwords on a Windows machine.
 python wifi.py
 ```
 
-### 2. Image Deduplicator (duplicate.py)
+### 2. Image Deduplicator (duplicate.py) (work in progress)
 
 Scans a target directory and its subfolders to find identical image files using size filtering and cryptographic hash verification (SHA-256).
 Safe Cleanup: Performs a dry-run by default, listing duplicates before any action is taken.
